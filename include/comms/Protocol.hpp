@@ -4,6 +4,20 @@
 
 namespace Packets
 {
+// used for the verification with upper layer
+constexpr uint8_t VERSION = 1; 
+
+enum class Type : uint8_t
+{
+    Scan = 1,
+    Command = 2,
+};
+
+struct __attribute__((packed)) Header {
+    uint8_t version;
+    Type type;
+    uint16_t seq;
+};
 
 struct __attribute__((packed)) ScanPoint {
     uint16_t angle;
@@ -19,5 +33,8 @@ struct __attribute__((packed)) Command {
     uint8_t  turretMode;
     int16_t  turretArg;
 };
+
+static_assert(sizeof(Header)    == 4,  "Header size is incorrect");
+static_assert(sizeof(ScanPoint) == 10, "ScanPoint size is incorrect");
 
 } // namespace Packets

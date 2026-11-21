@@ -29,12 +29,11 @@ void HostComm::queueScan(const Packets::ScanPoint& packet)
     if (scanCount >= MAX_POINTS) {
         return;
     }
-    std::size_t scanPointSize = sizeof(Packets::ScanPoint);
     //scanBuf[scanCount * scanPointSize] = packet;
-        std::memcpy(
-        scanBuf + scanCount * scanPointSize,
+    std::memcpy(
+        scanBuf + HEADER_SIZE + scanCount * SCANPOINT_SIZE,
         &packet,
-        scanPointSize
+        SCANPOINT_SIZE
     );
     ++scanCount;
 }
@@ -47,6 +46,12 @@ void HostComm::flushScan()
     if (scanCount == 0) {
         return;
     }
-    link.send(scanBuf, scanCount * sizeof(Packets::ScanPoint));
+    Packets::Header header{
+        Packets::VERSION,
+        Packets::Type::Scan,
+        scanSeq++
+    };
+    std::memcpy(scanBuf, &header, sizeof(header));
+    link.send(scanBuf, HEADER_SIZE + scanCount * SCANPOINT_SIZE);
     scanCount = 0;
 }
