@@ -38,9 +38,11 @@ void Mole::tick(ControllerPtr ctl)
     turret.run();
 
     if (sensorTimer.isReady()) {
-        ctx.updateSensors();
+        bool isSensorDataFresh = ctx.updateSensors();
         currentTurretMode->updateTurretTarget();
-        queueScanToHost();
+        if (isSensorDataFresh) {
+            queueScanToHost();
+        }
         host.update();
     }
     if (enginesTimer.isReady()) {
@@ -124,10 +126,10 @@ void Mole::queueScanToHost()
 {
     Packets::ScanPoint scan
     {
-        turret.getAngle(),
-        ctx.prox.getDistance(),
-        ctx.prox.getSignal(),
-        millis()
+        static_cast<uint16_t>(turret.getAngle()),
+        static_cast<uint16_t>(ctx.prox.getDistance()),
+        static_cast<int16_t>(ctx.prox.getSignal()),
+        static_cast<uint32_t>(millis())
     };
     host.queueScan(scan);
 }
