@@ -16,8 +16,8 @@ struct MoleContext
     void updatePad(ControllerPtr ctl) {
         pad.processData(ctl);
     }
-    void updateSensors() {
-        prox.updateData();
+    bool updateSensors() {
+        return prox.updateData();
     }
     void printData() const {
         pad.printData();

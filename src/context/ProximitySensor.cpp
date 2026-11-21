@@ -17,10 +17,8 @@ bool ProximitySensor::updateData()
     }
     distance = rawDistCm;
     // NOTE it converts -1 to 65335, this number should be handled explicitely someday xD
-    signal = static_cast<uint16_t>(rawSignal);
+    signal = rawSignal;
     temperature = static_cast<float>(rawTempHundreths) / 100.0;
-    if (signal < MIN_SIGNAL) {
-        distance = MAX_DISTANCE;
-    }
+    distance = (signal < MIN_SIGNAL) ? MAX_DISTANCE : rawDistCm;
     return true;
 }

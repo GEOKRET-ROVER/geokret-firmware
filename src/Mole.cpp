@@ -1,7 +1,8 @@
 #include "Mole.hpp"
 #include "Config.hpp"
+#include "Protocol.hpp"
 
-Mole::Mole() 
+Mole::Mole(ILink& ilink) 
     : enginesTimer{IntervalsMs::ENGINE},
       sensorTimer{IntervalsMs::SENSOR},
       turret{Pins::ROTATION_TOWER},
@@ -12,9 +13,10 @@ Mole::Mole()
       manualTurret{ctx, turret},
       sweepTurret{ctx, turret},
       homingTurret{ctx, turret},
-      currentTurretMode{&homingTurret}
+      currentTurretMode{&homingTurret},
+      host{ilink}
 {
-    
+
 }
 
 void Mole::begin()
@@ -27,6 +29,8 @@ void Mole::begin()
     turret.begin();
 
     mainDriveTrain.begin();
+
+    host.begin();
 }
 
 void Mole::tick(ControllerPtr ctl)
@@ -34,8 +38,12 @@ void Mole::tick(ControllerPtr ctl)
     turret.run();
 
     if (sensorTimer.isReady()) {
-        ctx.updateSensors();
+        bool isSensorDataFresh = ctx.updateSensors();
         currentTurretMode->updateTurretTarget();
+        if (isSensorDataFresh) {
+            queueScanToHost();
+        }
+        host.update();
     }
     if (enginesTimer.isReady()) {
         if (ctl == nullptr or not ctl->isConnected()) {
@@ -43,9 +51,6 @@ void Mole::tick(ControllerPtr ctl)
             return;
         }
         ctx.updatePad(ctl);
-        // if (ctx.pad.buttonA().justPushed()) {
-        //     turret.tmpMoveAround(ctx);
-        // }
         handleModeSwitching();
         driveEngines();
     }
@@ -67,7 +72,13 @@ void Mole::emergencyStop()
 
 void Mole::handleModeSwitching()
 {
-    if (not isModeToChange()) {
+    switchDriveMode();
+    switchTurretMode();
+}
+
+void Mole::switchDriveMode()
+{
+    if (not ctx.pad.buttonY().justPushed()) {
         return;
     }
     if (currentDriveMode == &manualDrive) {
@@ -79,12 +90,26 @@ void Mole::handleModeSwitching()
     currentDriveMode->enter();
 }
 
-bool Mole::isModeToChange() const
+void Mole::switchTurretMode()
 {
-    // switching mode on pushing Y button
-    return ctx.pad.buttonY().justPushed();
+    if (ctx.pad.buttonA().justPushed()) {
+        if (currentTurretMode == &manualTurret) {
+            currentTurretMode = &sweepTurret;
+        }
+        else {
+            currentTurretMode = &manualTurret;
+        }
+        currentTurretMode->enter();
+        return;
+    }
+    if (ctx.pad.buttonB().justPushed()) {
+        if (currentTurretMode != &homingTurret) {
+            currentTurretMode = &homingTurret;
+        }
+        currentTurretMode->enter();
+    }
+    
 }
-
 void Mole::driveEngines()
 {
     DriveCommand command = currentDriveMode->calculatePower();
@@ -95,4 +120,16 @@ void Mole::driveEngines()
 void Mole::printData() const
 {
     ctx.printData();
+}
+
+void Mole::queueScanToHost()
+{
+    Packets::ScanPoint scan
+    {
+        static_cast<uint16_t>(turret.getAngle()),
+        static_cast<uint16_t>(ctx.prox.getDistance()),
+        static_cast<int16_t>(ctx.prox.getSignal()),
+        static_cast<uint32_t>(millis())
+    };
+    host.queueScan(scan);
 }

@@ -5,13 +5,13 @@
 
 class ProximitySensor
 {
-public:
+public: // CONFIGURABLE CONSTANTS
     static constexpr int16_t MAX_DISTANCE = 800;
     static constexpr uint16_t MIN_SIGNAL   = 100;
     void begin();
     bool updateData();
     int16_t getDistance() const { return distance; }
-    uint16_t getSignal() const { return signal; }
+    int16_t getSignal() const { return signal; }
     float getTemperature() const { return temperature; }
 private:
     TFLI2C lidar;
